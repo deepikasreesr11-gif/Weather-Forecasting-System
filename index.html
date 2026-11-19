@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Weather Forecast</title>
+  <style>
+    :root { color-scheme: light; font-family: Arial, sans-serif; color: #172b4d; background: #f3f7fc; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; }
+    [hidden] { display: none !important; }
+    button, input { font: inherit; }
+    button { border: 0; cursor: pointer; }
+    .login-screen { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
+    .login-card { width: min(100%, 410px); padding: 36px; border-radius: 14px; background: white; box-shadow: 0 12px 40px #173a6620; }
+    .login-card h1 { margin: 0 0 8px; color: #1452a5; font-size: 24px; }
+    .login-card p { color: #62738b; }
+    .login-card label { display: block; margin: 18px 0 7px; font-weight: 700; }
+    .login-card input, .search-form input { width: 100%; padding: 12px 14px; border: 1px solid #bdc9d8; border-radius: 8px; }
+    .primary-button { padding: 12px 18px; border-radius: 8px; background: #1452a5; color: white; font-weight: 700; }
+    .login-card .primary-button { width: 100%; margin-top: 20px; }
+    .auth-hint { margin-bottom: 0; font-size: 13px; }
+    .auth-toggle { display: block; margin: 18px auto 0; padding: 4px; background: transparent; color: #1452a5; font-weight: 700; }
+    .login-error { min-height: 20px; color: #a12622 !important; font-size: 14px; }
+    .app-shell { display: grid; grid-template-columns: 230px minmax(0, 1fr); min-height: 100vh; }
+    .sidebar { display: flex; flex-direction: column; gap: 30px; padding: 28px 16px; background: #1452a5; color: white; }
+    .brand { margin: 0 8px; font-size: 22px; font-weight: 700; letter-spacing: .04em; }
+    .nav-list { display: grid; gap: 8px; }
+    .nav-button { width: 100%; padding: 13px 14px; border-radius: 8px; background: transparent; color: #eaf3ff; text-align: left; font-weight: 700; }
+    .nav-button:hover, .nav-button.active { background: #ffffff24; color: white; }
+    .nav-button.logout { margin-top: auto; }
+    .main-area { min-width: 0; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 22px 28px; background: white; box-shadow: 0 2px 8px #173a660d; }
+    .topbar h1 { margin: 0; color: #1452a5; font-size: 25px; }
+    .search-form { display: flex; gap: 8px; width: min(100%, 480px); }
+    .search-form input { min-width: 0; }
+    .search-form button { padding: 0 18px; border-radius: 8px; background: #1452a5; color: white; font-weight: 700; }
+    .search-form button:disabled { opacity: .6; cursor: wait; }
+    .content { max-width: 1120px; margin: 0 auto; padding: 22px 28px 34px; }
+    #message { min-height: 24px; margin: 0 0 12px; color: #52657e; }
+    #message.error { color: #a12622; }
+    .current { margin-top: 8px; padding: 25px; border-radius: 14px; background: linear-gradient(120deg, #287acb, #1452a5); color: white; }
+    .current h2 { margin: 0 0 8px; font-size: 25px; }
+    .temperature { font-size: 56px; font-weight: 700; }
+    .condition { font-size: 18px; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0 30px; }
+    .stat, .day, .location-card { padding: 17px; border: 1px solid #e0e7f0; border-radius: 10px; background: white; }
+    .stat span, .location-card span { display: block; color: #62738b; font-size: 14px; }
+    .stat strong, .location-card strong { display: block; margin-top: 8px; color: #1452a5; font-size: 20px; }
+    h2.section-title { margin: 4px 0 16px; font-size: 22px; }
+    .forecast { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+    .day { text-align: center; }
+    .day strong, .day span { display: block; margin: 8px 0; }
+    .day span { color: #62738b; font-size: 14px; }
+    .location-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    @media (max-width: 760px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar { gap: 14px; padding: 16px; }
+      .nav-list { display: flex; gap: 5px; overflow-x: auto; }
+      .nav-button { width: auto; white-space: nowrap; }
+      .nav-button.logout { margin: 0 0 0 auto; }
+      .topbar { align-items: flex-start; flex-direction: column; padding: 18px 20px; }
+      .search-form { width: 100%; }
+      .content { padding: 18px 20px 28px; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .forecast { grid-template-columns: repeat(2, 1fr); }
+      .day:last-child { grid-column: span 2; }
+    }
+    @media (max-width: 430px) {
+      .location-grid { grid-template-columns: 1fr; }
+      .login-card { padding: 26px; }
+      .temperature { font-size: 48px; }
+    }
+  </style>
+</head>
+<body>
+  <section id="login-screen" class="login-screen">
+    <form id="login-form" class="login-card">
+      <h1>Weather Forecast</h1>
+      <p id="auth-description">Create an account to use your local weather dashboard.</p>
+      <label for="username">Username</label>
+      <input id="username" autocomplete="username" minlength="3" required>
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="current-password" minlength="6" required>
+      <div id="confirm-wrap">
+        <label for="confirm-password">Confirm password</label>
+        <input id="confirm-password" type="password" autocomplete="new-password" minlength="6">
+      </div>
+      <p id="login-error" class="login-error" role="alert"></p>
+      <button id="auth-submit" class="primary-button" type="submit">Create account</button>
+      <p id="auth-hint" class="auth-hint">Choose a username and password for this browser.</p>
+      <button id="auth-toggle" class="auth-toggle" type="button">Already have an account? Log in</button>
+    </form>
+  </section>
+
+  <div id="app" class="app-shell" hidden>
+    <aside class="sidebar">
+      <div class="brand">WEATHER</div>
+      <nav class="nav-list" aria-label="Main navigation">
+        <button class="nav-button active" type="button" data-view="dashboard">Dashboard</button>
+        <button class="nav-button" type="button" data-view="location">Location</button>
+        <button class="nav-button" type="button" data-view="forecast">Forecast</button>
+        <button id="logout" class="nav-button logout" type="button">Log out</button>
+      </nav>
+    </aside>
+    <div class="main-area">
+      <header class="topbar">
+        <h1 id="view-title">Dashboard</h1>
+        <form id="search-form" class="search-form">
+          <input id="city" aria-label="City in India" placeholder="Enter a city in India" value="Coimbatore" required>
+          <button id="search-button" type="submit">Search</button>
+        </form>
+      </header>
+      <main class="content">
+        <p id="message" role="status" aria-live="polite"></p>
+        <section id="dashboard-view" class="page-view">
+          <div class="current">
+            <h2 id="place"></h2>
+            <div class="temperature"><span id="temperature"></span>°C</div>
+            <div class="condition" id="condition"></div>
+            <p>Feels like <span id="feels-like"></span>°C</p>
+          </div>
+          <section class="stats" aria-label="Current conditions">
+            <div class="stat"><span>Humidity</span><strong id="humidity"></strong></div>
+            <div class="stat"><span>Chance of rain</span><strong id="rain"></strong></div>
+            <div class="stat"><span>Wind</span><strong id="wind"></strong></div>
+            <div class="stat"><span>Pressure</span><strong id="pressure"></strong></div>
+          </section>
+        </section>
+        <section id="location-view" class="page-view" hidden>
+          <h2 class="section-title">Location details</h2>
+          <div class="location-grid">
+            <div class="location-card"><span>City</span><strong id="location-city">—</strong></div>
+            <div class="location-card"><span>State</span><strong id="location-state">—</strong></div>
+            <div class="location-card"><span>Latitude</span><strong id="location-latitude">—</strong></div>
+            <div class="location-card"><span>Longitude</span><strong id="location-longitude">—</strong></div>
+            <div class="location-card"><span>Time zone</span><strong id="location-timezone">—</strong></div>
+            <div class="location-card"><span>Local time</span><strong id="location-time">—</strong></div>
+          </div>
+        </section>
+        <section id="forecast-view" class="page-view" hidden>
+          <h2 class="section-title">5-day forecast</h2>
+          <section class="forecast" id="forecast" aria-label="5-day forecast"></section>
+        </section>
+      </main>
+    </div>
+  </div>
+  <script>
+    const loginScreen = document.getElementById("login-screen");
+    const app = document.getElementById("app");
+    const loginForm = document.getElementById("login-form");
+    const loginError = document.getElementById("login-error");
+    const searchForm = document.getElementById("search-form");
+    const searchButton = document.getElementById("search-button");
+    const message = document.getElementById("message");
+    const accountStorageKey = "weatherDashboardAccount";
+    let authMode = "signup";
+    let activeView = "dashboard";
+
+    function savedAccount() {
+      const saved = localStorage.getItem(accountStorageKey);
+      if (!saved) return null;
+      const account = JSON.parse(saved);
+      if (typeof account.username !== "string"
+          || typeof account.salt !== "string"
+          || typeof account.passwordHash !== "string") {
+        throw new Error("Saved account data is invalid. Create a new account to replace it.");
+      }
+      return account;
+    }
+
+    function setAuthMode(mode) {
+      authMode = mode;
+      const signup = mode === "signup";
+      document.getElementById("auth-description").textContent = signup
+        ? "Create an account to use your local weather dashboard."
+        : "Sign in with the account you created in this browser.";
+      document.getElementById("confirm-wrap").hidden = !signup;
+      document.getElementById("confirm-password").required = signup;
+      document.getElementById("password").autocomplete = signup ? "new-password" : "current-password";
+      document.getElementById("auth-submit").textContent = signup ? "Create account" : "Log in";
+      document.getElementById("auth-hint").textContent = signup
+        ? "Your account is saved only in this browser. Creating a new account replaces the saved one."
+        : "Your account is saved only in this browser.";
+      document.getElementById("auth-toggle").textContent = signup
+        ? "Already have an account? Log in"
+        : "Create a new account";
+      loginError.textContent = "";
+    }
+
+    async function hashPassword(password, salt) {
+      const key = await crypto.subtle.importKey(
+        "raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+      const bits = await crypto.subtle.deriveBits(
+        { name: "PBKDF2", hash: "SHA-256", salt, iterations: 150000 }, key, 256);
+      return Array.from(new Uint8Array(bits), byte => byte.toString(16).padStart(2, "0")).join("");
+    }
+
+    try {
+      setAuthMode(savedAccount() ? "login" : "signup");
+    } catch (error) {
+      setAuthMode("signup");
+      loginError.textContent = error.message || "Could not read the saved account.";
+    }
+
+    function condition(code) {
+      if (code === 0) return "Clear sky";
+      if (code === 1) return "Mainly clear";
+      if (code === 2) return "Partly cloudy";
+      if (code === 3) return "Overcast";
+      if (code === 45 || code === 48) return "Fog";
+      if (code >= 51 && code <= 57) return "Drizzle";
+      if (code >= 61 && code <= 67) return "Rain";
+      if (code >= 71 && code <= 77) return "Snow";
+      if (code >= 80 && code <= 82) return "Rain showers";
+      if (code === 85 || code === 86) return "Snow showers";
+      if (code >= 95) return "Thunderstorm";
+      return "Unknown conditions";
+    }
+
+    async function getJson(url) {
+      const response = await fetch(url);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Request failed (" + response.status + ").");
+      return data;
+    }
+
+    function showView(name) {
+      activeView = name;
+      document.querySelectorAll(".page-view").forEach(view => {
+        view.hidden = view.id !== name + "-view";
+      });
+      document.querySelectorAll("[data-view]").forEach(button => {
+        const selected = button.dataset.view === name;
+        button.classList.toggle("active", selected);
+        button.setAttribute("aria-current", selected ? "page" : "false");
+      });
+      document.getElementById("view-title").textContent =
+        name.charAt(0).toUpperCase() + name.slice(1);
+    }
+
+    async function loadWeather(city) {
+      searchButton.disabled = true;
+      message.className = "";
+      message.textContent = "Loading weather for " + city + "…";
+      try {
+        const geo = await getJson("/api/geocoding?name=" + encodeURIComponent(city));
+        if (!geo.results || geo.results.length === 0) {
+          throw new Error("City not found in India. Check the spelling and try again.");
+        }
+        const place = geo.results[0];
+        const data = await getJson("/api/forecast?latitude=" + encodeURIComponent(place.latitude)
+          + "&longitude=" + encodeURIComponent(place.longitude));
+        const current = data.current;
+        const daily = data.daily;
+        document.getElementById("place").textContent = place.name
+          + (place.admin1 ? ", " + place.admin1 : "");
+        document.getElementById("temperature").textContent = Math.round(current.temperature_2m);
+        document.getElementById("condition").textContent = condition(current.weather_code);
+        document.getElementById("feels-like").textContent = Math.round(current.apparent_temperature);
+        document.getElementById("humidity").textContent = current.relative_humidity_2m + "%";
+        document.getElementById("rain").textContent = daily.precipitation_probability_max[0] + "%";
+        document.getElementById("wind").textContent = Math.round(current.wind_speed_10m) + " km/h";
+        document.getElementById("pressure").textContent = Math.round(current.pressure_msl) + " hPa";
+        document.getElementById("location-city").textContent = place.name;
+        document.getElementById("location-state").textContent = place.admin1 || "—";
+        document.getElementById("location-latitude").textContent = Number(place.latitude).toFixed(4);
+        document.getElementById("location-longitude").textContent = Number(place.longitude).toFixed(4);
+        document.getElementById("location-timezone").textContent = data.timezone || "—";
+        document.getElementById("location-time").textContent = current.time.replace("T", " ");
+
+        const forecast = document.getElementById("forecast");
+        forecast.replaceChildren();
+        daily.time.forEach((date, index) => {
+          const card = document.createElement("article");
+          card.className = "day";
+          const day = document.createElement("strong");
+          day.textContent = new Date(date + "T00:00:00").toLocaleDateString(undefined, { weekday: "long" });
+          const summary = document.createElement("span");
+          summary.textContent = condition(daily.weather_code[index]);
+          const temperatures = document.createElement("strong");
+          temperatures.textContent = Math.round(daily.temperature_2m_max[index]) + "° / "
+            + Math.round(daily.temperature_2m_min[index]) + "°C";
+          const rain = document.createElement("span");
+          rain.textContent = "Rain " + daily.precipitation_probability_max[index] + "%";
+          card.append(day, summary, temperatures, rain);
+          forecast.append(card);
+        });
+        message.textContent = "Live forecast";
+      } catch (error) {
+        message.className = "error";
+        message.textContent = error.message || "Could not load weather. Check your internet connection and try again.";
+      } finally {
+        searchButton.disabled = false;
+      }
+    }
+
+    loginForm.addEventListener("submit", event => {
+      event.preventDefault();
+      (async () => {
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value;
+        try {
+          if (authMode === "signup") {
+            if (username.length < 3) throw new Error("Username must be at least 3 characters.");
+            if (password.length < 6) throw new Error("Password must be at least 6 characters.");
+            if (password !== document.getElementById("confirm-password").value) {
+              throw new Error("The passwords do not match.");
+            }
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const encodedSalt = btoa(String.fromCharCode(...salt));
+            const passwordHash = await hashPassword(password, salt);
+            localStorage.setItem(accountStorageKey, JSON.stringify({
+              username,
+              salt: encodedSalt,
+              passwordHash
+            }));
+          } else {
+            const account = savedAccount();
+            if (!account || username !== account.username) {
+              throw new Error("Username or password is incorrect.");
+            }
+            const salt = Uint8Array.from(atob(account.salt), character => character.charCodeAt(0));
+            const passwordHash = await hashPassword(password, salt);
+            if (passwordHash !== account.passwordHash) {
+              throw new Error("Username or password is incorrect.");
+            }
+          }
+          loginError.textContent = "";
+          loginScreen.hidden = true;
+          app.hidden = false;
+          showView("dashboard");
+          loadWeather(document.getElementById("city").value.trim() || "Coimbatore");
+        } catch (error) {
+          loginError.textContent = error.message || "Could not save or verify your account.";
+        }
+      })();
+    });
+
+    document.getElementById("auth-toggle").addEventListener("click", () => {
+      setAuthMode(authMode === "signup" ? "login" : "signup");
+    });
+
+    document.querySelectorAll("[data-view]").forEach(button => {
+      button.addEventListener("click", () => showView(button.dataset.view));
+    });
+
+    document.getElementById("logout").addEventListener("click", () => {
+      app.hidden = true;
+      loginForm.reset();
+      loginScreen.hidden = false;
+      setAuthMode("login");
+      document.getElementById("username").focus();
+    });
+
+    searchForm.addEventListener("submit", event => {
+      event.preventDefault();
+      const city = document.getElementById("city").value.trim();
+      if (city) loadWeather(city);
+    });
+  </script>
+</body>
+</html>
